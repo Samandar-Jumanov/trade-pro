@@ -39,5 +39,24 @@ export { app, logger };
 
 // User should be saved on bot start
 // User can post their product to trade  // paid ( ads included )
+
+        // title           String
+        // wanted_trades   String
+        // categoryName       String  are things to be asked when adding products
+        // Collect data 
+
 // User can search through categories for products
-// User is planned to connect with adminstartor for product
+
+  // User should include their wishes to get product
+  // Exp : from which category , what kind of product 
+  // Lets laptops or anything else 
+
+
+// 1 :
+ // User needs to get trader  tg user_name 
+ // 2 :
+ // User 
+// 3 :
+
+
+

@@ -11,7 +11,7 @@ datasource db {
 model User {
   id          String   @id @default(uuid())
   tg_username  String ?
-  tgId          String
+  tgId          String   @unique
   products       Product[]
 }
 
@@ -23,7 +23,7 @@ model Product {
     wanted_trades   String
     userId          String
     categoryId      String
-    isTraded        Boolean
+    isTraded        Boolean  @default(false)
 
     trade         Trade?  @relation(fields: [tradeId], references: [id])
     tradeId       String? @unique 
@@ -37,7 +37,7 @@ model Product {
 model Category {
 
     id    String       @id @default(cuid())
-    name  String
+    name  String @unique
     type  String
     products   Product[]
 
