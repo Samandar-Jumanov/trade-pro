@@ -1,0 +1,54 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+
+model User {
+  id          String   @id @default(uuid())
+  tg_username  String ?
+  tgId          String
+  products       Product[]
+}
+
+
+model Product {
+
+    id              String  @id @default(uuid())
+    title           String
+    wanted_trades   String
+    userId          String
+    categoryId      String
+    isTraded        Boolean
+
+    trade         Trade?  @relation(fields: [tradeId], references: [id])
+    tradeId       String? @unique 
+
+    user    User  @relation(fields: [userId] , references: [id])
+    category Category @relation(fields: [categoryId], references: [id])
+
+}
+
+
+model Category {
+
+    id    String       @id @default(cuid())
+    name  String
+    type  String
+    products   Product[]
+
+}
+
+
+model Trade{
+
+   id String  @id @default(cuid())
+
+   productId  String ? @unique
+   product  Product ? 
+
+}
