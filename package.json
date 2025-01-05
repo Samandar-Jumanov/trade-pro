@@ -16,7 +16,12 @@
     "lint:fix": "biome check src/ --fix",
     "format": "biome format src/",
     "test": "vitest run",
-    "prepare": "husky"
+    "prepare": "husky",
+    "db:seed": "npx prisma db seed"
+    
+  },
+  "prisma" :{
+        "seed": "ts-node prisma/seed.ts"
   },
   "dependencies": {
     "@asteasolutions/zod-to-openapi": "^7.0.0",

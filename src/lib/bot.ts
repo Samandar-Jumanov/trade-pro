@@ -1,62 +1,19 @@
 import { Telegraf, Scenes, Context, session, Markup } from 'telegraf';
 import { PrismaClient } from '@prisma/client';
 import { InlineKeyboardButton } from 'telegraf/types';
+import { IWizardState , ICategory , ICustomContext, IProduct , IUser } from '@/types/bot';
 
 const prisma = new PrismaClient();
 
-/**
- * Interface definitions for the bot's data structures
- */
-interface WizardState {
-  categories: Category[];
-  categoryId: number;
-  title: string;
-}
-
-interface Category {
-  id: number;
-  name: string;
-  type: string;
-  _count?: {
-    products: number;
-  };
-}
-
-interface Product {
-  id: number;
-  title: string;
-  wanted_trades: string;
-  userId: number;
-  categoryId: number;
-  isTraded: boolean;
-  category: Category;
-  created_at?: Date;
-}
-
-interface User {
-  id: number;
-  tgId: string;
-  tg_username?: string;
-  products: Product[];
-}
-
-// Custom context type with wizard state
-interface CustomContext extends Context {
-  wizard: Scenes.WizardContext<Scenes.WizardSessionData & { state: WizardState }>;
-}
-
-/**
- * Main TradingBot class handling all Telegram bot functionality
- */
 export class TradingBot {
-  private bot: Telegraf<CustomContext>;
-  private productScene: Scenes.WizardScene<CustomContext>;
+  private bot: Telegraf<ICustomContext>;
+  private productScene: Scenes.WizardScene<any>;
   
   // Pagination settings
   private readonly ITEMS_PER_PAGE = 5;
 
   constructor(token: string) {
-    this.bot = new Telegraf<CustomContext>(token);
+    this.bot = new Telegraf<ICustomContext>(token);
     this.productScene = this.createProductScene();
     this.setupMiddleware();
     this.setupCommands();
@@ -65,9 +22,10 @@ export class TradingBot {
 
   /**
    * Creates the scene for adding new products
-   */
-  private createProductScene(): Scenes.WizardScene<CustomContext> {
-    return new Scenes.WizardScene<CustomContext>(
+  */
+
+  private createProductScene(): Scenes.WizardScene<any> {
+    return new Scenes.WizardScene<any>(
       'add_product',
       // Step 1: Category selection
       async (ctx) => {
@@ -86,13 +44,13 @@ export class TradingBot {
         return ctx.wizard.next();
       },
       // Step 2: Handle category selection and ask for title
-      async (ctx) => {
+      async (ctx : any ) => {
         // Handle only callback queries for category selection
         if (!('callback_query' in ctx.update)) return;
         if (!ctx.callbackQuery?.data?.startsWith('select_category:')) return;
         
-        const categoryId = parseInt(ctx.callbackQuery.data.split(':')[1]);
-        const category = ctx.wizard.state.categories.find(c => c.id === categoryId);
+        const categoryId  : string = ctx.callbackQuery.data.split(':')[1];
+        const category = ctx.wizard.state.categories.find(( c : ICategory) => c.id === categoryId);
         
         if (!category) {
           await ctx.reply('❌ Invalid category. Please try again.');
@@ -116,7 +74,7 @@ export class TradingBot {
         const state = ctx.wizard.state;
         
         try {
-          // Ensure user exists
+          // TODO : ADD redis 
           const user = await prisma.user.upsert({
             where: { tgId: ctx.from.id.toString() },
             update: { tg_username: ctx.from.username || undefined },
@@ -134,7 +92,6 @@ export class TradingBot {
               userId: user.id,
               categoryId: state.categoryId,
               isTraded: false,
-              created_at: new Date()
             },
             include: {
               category: true
@@ -164,7 +121,7 @@ export class TradingBot {
    * Sets up middleware for the bot
    */
   private setupMiddleware(): void {
-    const stage = new Scenes.Stage<CustomContext>([this.productScene]);
+    const stage = new Scenes.Stage<ICustomContext>([this.productScene]);
     this.bot.use(session());
     this.bot.use(stage.middleware());
 
@@ -199,8 +156,8 @@ export class TradingBot {
     });
 
     // Handle product category browsing
-    this.bot.action(/^browse_category:(\d+):(\d+)$/, async (ctx) => {
-      const categoryId = parseInt(ctx.match[1]);
+    this.bot.action(/^browse_category:(.+):(\d+)$/, async (ctx) => {
+      const categoryId = ctx.match[1];
       const page = parseInt(ctx.match[2]);
       await this.showCategoryProducts(ctx, categoryId, page);
     });
@@ -214,6 +171,7 @@ export class TradingBot {
     this.bot.action('view_my_products', async (ctx) => {
       await this.showUserProducts(ctx, 1);
     });
+    
   }
 
   /**
@@ -251,7 +209,8 @@ export class TradingBot {
   /**
    * Shows available categories with product counts
    */
-  private async showCategories(ctx: CustomContext): Promise<void> {
+  
+  private async showCategories(ctx: ICustomContext): Promise<void> {
     const categories = await prisma.category.findMany({
       include: {
         _count: {
@@ -280,7 +239,7 @@ export class TradingBot {
    * Shows products in a specific category with pagination
    */
   private async showCategoryProducts(
-    ctx: CustomContext,
+    ctx: ICustomContext,
     categoryId: string,
     page: number
   ): Promise<void> {
@@ -337,7 +296,7 @@ export class TradingBot {
   /**
    * Shows user's products with pagination
    */
-  private async showUserProducts(ctx: CustomContext, page: number): Promise<void> {
+  private async showUserProducts(ctx: ICustomContext, page: number): Promise<void> {
     if (!ctx.from) return;
 
     const skip = (page - 1) * this.ITEMS_PER_PAGE;
@@ -351,9 +310,6 @@ export class TradingBot {
             include: { category: true },
             take: this.ITEMS_PER_PAGE,
             skip,
-            orderBy: {
-              created_at: 'desc'
-            }
           }
         }
       }),
@@ -427,7 +383,7 @@ export class TradingBot {
   /**
    * Formats product details for display
    */
-  private formatProductDetails(product: Product): string {
+  private formatProductDetails(product: IProduct): string {
     return [
       `🏷 Title: ${product.title}`,
       `📁 Category: ${product.category.name}`,
@@ -441,9 +397,10 @@ export class TradingBot {
   /**
    * Starts the bot
    */
+
   public start(): void {
     this.bot.launch();
-    console.log('🚀 Bot started');
+    console.log(' Bot started');
 
     // Enable graceful stop
     process.once('SIGINT', () => {
